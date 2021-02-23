@@ -5,15 +5,20 @@ import { AudioSlider } from "./AudioSlider";
 
 Howler.autoSuspend = false;
 
+const CACHE = "audio_cache";
+
 const EMPTY_AUDIO_URL = "/1-second-of-silence.mp3";
-const BACKGROUND = "/background.mp3";
-const NARRATION = "/narration.mp3";
+const BACKGROUND =
+  "https://gaia.lithodomos.com/633059a6a4545d6f271b7795753cf16f.mp3";
+const NARRATION =
+  "https://gaia.lithodomos.com/a4fe809785cde716d7ce06c67ade1d9a.mp3";
 
 interface State {
   unlocked: boolean;
   duration: number;
   seekPos: number;
   playingState: AudioPlayingState;
+  cached: boolean;
 }
 class App extends React.Component<any, State> {
   state = {
@@ -21,6 +26,7 @@ class App extends React.Component<any, State> {
     duration: 0,
     seekPos: 0,
     playingState: AudioPlayingState.loading,
+    cached: false,
   };
 
   audioRef = React.createRef<HTMLAudioElement>();
@@ -29,7 +35,9 @@ class App extends React.Component<any, State> {
 
   music: Howl | null = null;
 
-  componentDidMount() {
+  async componentDidMount() {
+    await this.checkCached();
+
     this.narration = new Howl({
       src: NARRATION,
       loop: true,
@@ -65,8 +73,8 @@ class App extends React.Component<any, State> {
     this.music = new Howl({
       src: BACKGROUND,
       loop: true,
-      html5: false,
-      volume: 0.1,
+      html5: true,
+      // volume: 0.1,
       autoplay: false,
     });
   }
@@ -98,14 +106,18 @@ class App extends React.Component<any, State> {
 
   play = () => {
     if (this.narration) {
-      if (Howler.ctx) {
-        Howler.ctx.resume();
-      }
-
       const isPlaying = this.narration.playing();
 
       if (!isPlaying) {
         this.narration.play();
+      }
+    }
+
+    if (this.music) {
+      const isPlaying = this.music.playing();
+
+      if (!isPlaying) {
+        this.music.play();
       }
     }
   };
@@ -130,59 +142,91 @@ class App extends React.Component<any, State> {
     }
   }
 
-  startPlay = () => {
-    console.log("play");
+  checkCached = async () => {
+    try {
+      const cache = await caches.open(CACHE);
 
-    if (this.audioRef.current) {
-      console.log("playing");
+      if (cache) {
+        const cached1 = await cache.match(EMPTY_AUDIO_URL);
+        const cached2 = await cache.match(BACKGROUND);
+        const cached3 = await cache.match(NARRATION);
 
-      this.audioRef.current.play();
-    }
+        const cached = Boolean(cached1 && cached2 && cached3);
 
-    if (this.music) {
-      this.music.play();
-    }
+        this.setState({ cached });
+      }
 
-    if (this.narration) {
-      this.narration.play();
-    }
+      console.log("cached");
+    } catch (error) {}
+  };
+
+  cacheTracks = async () => {
+    try {
+      const cache = await caches.open(CACHE);
+
+      if (cache) {
+        await cache.addAll([EMPTY_AUDIO_URL, BACKGROUND, NARRATION]);
+
+        this.setState({ cached: true });
+      }
+    } catch (error) {}
+  };
+
+  cleanCache = async () => {
+    try {
+      const cache = await caches.open(CACHE);
+
+      if (cache) {
+        await cache.delete(EMPTY_AUDIO_URL);
+        await cache.delete(BACKGROUND);
+        await cache.delete(NARRATION);
+      }
+
+      this.setState({ cached: false });
+    } catch (error) {}
   };
 
   render() {
     return (
       <div>
-        <button onClick={this.startPlay}>Start everything</button>
+        <p>Cached: {this.state.cached.toString()}</p>
 
-        {this.state.unlocked && (
-          <>
-            <p>Length: {this.state.duration.toFixed(2)} seconds</p>
-
-            <button
-              onClick={() => {
-                if (this.state.playingState === AudioPlayingState.playing) {
-                  this.pause();
-                } else {
-                  this.play();
-                }
-              }}
-            >
-              {this.state.playingState === AudioPlayingState.playing
-                ? "Pause"
-                : "Play"}
-            </button>
-
-            <AudioSlider
-              seek={this.seek}
-              seekPos={this.state.seekPos}
-              length={this.state.duration}
-              playingState={this.state.playingState}
-              pause={this.pause}
-              play={this.play}
-            />
-          </>
+        {!this.state.cached && (
+          <button onClick={this.cacheTracks}>Cache</button>
         )}
 
-        <audio
+        {this.state.cached && (
+          <button onClick={this.cleanCache}>Clean Cache</button>
+        )}
+
+        <p>Audio</p>
+
+        <button
+          onClick={() => {
+            if (this.state.playingState === AudioPlayingState.playing) {
+              this.pause();
+            } else {
+              this.play();
+            }
+          }}
+        >
+          {this.state.playingState === AudioPlayingState.playing
+            ? "Pause"
+            : "Play"}
+        </button>
+
+        <p>Length: {this.state.duration.toFixed(2)} seconds</p>
+
+        <AudioSlider
+          seek={this.seek}
+          seekPos={this.state.seekPos}
+          length={this.state.duration}
+          playingState={this.state.playingState}
+          pause={this.pause}
+          play={this.play}
+        />
+
+        {/* <audio
           ref={this.audioRef}
           src={EMPTY_AUDIO_URL}
           loop={true}
@@ -190,7 +234,7 @@ class App extends React.Component<any, State> {
             this.setState({ unlocked: true });
           }}
           autoPlay={false}
-        />
+        /> */}
       </div>
     );
   }
