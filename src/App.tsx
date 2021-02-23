@@ -41,7 +41,7 @@ class App extends React.Component<any, State> {
     this.narration = new Howl({
       src: NARRATION,
       loop: true,
-      html5: false,
+      html5: true,
       autoplay: false,
       onload: () => {
         if (this.narration) {
