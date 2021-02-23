@@ -92,8 +92,8 @@ class App extends React.Component<any, State> {
           if (this.narration) {
             this.setState({
               playingState: AudioPlayingState.playing,
-              duration: Math.floor(this.narration.duration()),
             });
+
             this.step();
           }
         },
