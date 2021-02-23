@@ -37,46 +37,6 @@ class App extends React.Component<any, State> {
 
   async componentDidMount() {
     await this.checkCached();
-
-    this.narration = new Howl({
-      src: NARRATION,
-      loop: true,
-      html5: true,
-      autoplay: false,
-      onload: () => {
-        if (this.narration) {
-          this.setState({
-            playingState: AudioPlayingState.idle,
-            duration: Math.floor(this.narration.duration()),
-          });
-        }
-      },
-      onend: () => {
-        this.setState({
-          playingState: AudioPlayingState.completed,
-          seekPos: 0,
-        });
-      },
-      onpause: () => {
-        this.setState({ playingState: AudioPlayingState.paused });
-      },
-      onplay: () => {
-        if (this.narration) {
-          this.setState({
-            playingState: AudioPlayingState.playing,
-            duration: Math.floor(this.narration.duration()),
-          });
-          this.step();
-        }
-      },
-    });
-    this.music = new Howl({
-      src: BACKGROUND,
-      loop: true,
-      html5: true,
-      // volume: 0.1,
-      autoplay: false,
-    });
   }
 
   step = () => {
@@ -105,12 +65,57 @@ class App extends React.Component<any, State> {
   };
 
   play = () => {
+    if (!this.narration) {
+      this.narration = new Howl({
+        src: NARRATION,
+        loop: true,
+        html5: true,
+        autoplay: false,
+        onload: () => {
+          if (this.narration) {
+            this.setState({
+              playingState: AudioPlayingState.idle,
+              duration: Math.floor(this.narration.duration()),
+            });
+          }
+        },
+        onend: () => {
+          this.setState({
+            playingState: AudioPlayingState.completed,
+            seekPos: 0,
+          });
+        },
+        onpause: () => {
+          this.setState({ playingState: AudioPlayingState.paused });
+        },
+        onplay: () => {
+          if (this.narration) {
+            this.setState({
+              playingState: AudioPlayingState.playing,
+              duration: Math.floor(this.narration.duration()),
+            });
+            this.step();
+          }
+        },
+      });
+    }
+
     if (this.narration) {
       const isPlaying = this.narration.playing();
 
       if (!isPlaying) {
         this.narration.play();
       }
+    }
+
+    if (!this.music) {
+      this.music = new Howl({
+        src: BACKGROUND,
+        loop: true,
+        html5: true,
+        // volume: 0.1,
+        autoplay: false,
+      });
     }
 
     if (this.music) {
